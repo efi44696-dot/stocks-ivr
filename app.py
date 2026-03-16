@@ -8,23 +8,23 @@ app = Flask(__name__)
 SYMBOLS = ['SOXL', 'TQQQ', 'QQQ', 'NQ=F']
 
 SYMBOL_NAMES = {
-    'SOXL': 'SOXL',
-    'TQQQ': 'TQQQ',
-    'QQQ': 'QQQ',
-    'NQ=F': 'Nasdaq Futures',
+    'SOXL': 'אסוקסל',
+    'TQQQ': 'טי קיו קיו קיו',
+    'QQQ': 'קיו קיו קיו',
+    'NQ=F': 'חוזים עתידיים על מדד הנאסדק',
 }
 
 def get_market_session():
     now = datetime.now(pytz.timezone('US/Eastern'))
     hour = now.hour + now.minute / 60
     if 4 <= hour < 9.5:
-        return "Pre market"
+        return "מסחר מוקדם"
     elif 9.5 <= hour < 16:
-        return "Regular session"
+        return "מסחר רגיל"
     elif 16 <= hour < 20:
-        return "After market"
+        return "מסחר מאוחר"
     else:
-        return "Market closed"
+        return "מחוץ לשעות המסחר"
 
 def get_stock_data(symbol):
     ticker = yf.Ticker(symbol)
@@ -32,19 +32,22 @@ def get_stock_data(symbol):
     price = info.last_price
     prev_close = info.previous_close
     if not price or not prev_close:
-        return f"{SYMBOL_NAMES.get(symbol, symbol)}, data unavailable. "
+        name = SYMBOL_NAMES.get(symbol, symbol)
+        return name + ", נתונים לא זמינים. "
     change = price - prev_close
     change_pct = (change / prev_close) * 100
-    direction = "up" if change >= 0 else "down"
+    direction = "עלייה" if change >= 0 else "ירידה"
+    sign = "פלוס" if change >= 0 else "מינוס"
     name = SYMBOL_NAMES.get(symbol, symbol)
-    text = f"{name}. Price: {price:.2f}. Change: {direction} {abs(change_pct):.1f} percent. "
+    text = name + ". מחיר: " + str(round(price, 2)) + ". שינוי: " + direction + " של " + sign + " " + str(round(abs(change_pct), 1)) + " אחוז. "
     try:
         pre = info.pre_market_price
         if pre:
             pre_change = pre - prev_close
             pre_pct = (pre_change / prev_close) * 100
-            pre_dir = "up" if pre_change >= 0 else "down"
-            text += f"Pre market: {pre:.2f}, {pre_dir} {abs(pre_pct):.1f} percent. "
+            pre_dir = "עלייה" if pre_change >= 0 else "ירידה"
+            pre_sign = "פלוס" if pre_change >= 0 else "מינוס"
+            text += "מסחר מוקדם: " + str(round(pre, 2)) + ", " + pre_dir + " של " + pre_sign + " " + str(round(abs(pre_pct), 1)) + " אחוז. "
     except:
         pass
     try:
@@ -52,8 +55,9 @@ def get_stock_data(symbol):
         if post:
             post_change = post - prev_close
             post_pct = (post_change / prev_close) * 100
-            post_dir = "up" if post_change >= 0 else "down"
-            text += f"After market: {post:.2f}, {post_dir} {abs(post_pct):.1f} percent. "
+            post_dir = "עלייה" if post_change >= 0 else "ירידה"
+            post_sign = "פלוס" if post_change >= 0 else "מינוס"
+            text += "מסחר מאוחר: " + str(round(post, 2)) + ", " + post_dir + " של " + post_sign + " " + str(round(abs(post_pct), 1)) + " אחוז. "
     except:
         pass
     return text
@@ -63,17 +67,15 @@ def stocks():
     symbols = request.args.get('symbols', ','.join(SYMBOLS))
     symbol_list = [s.strip().upper() for s in symbols.split(',')]
     session = get_market_session()
-    full_text = f"Stock data. {session}. "
+    full_text = "נתוני מניות עדכניים. " + session + ". "
     for sym in symbol_list:
         try:
             full_text += get_stock_data(sym)
         except:
-            full_text += f"{sym}, error loading data. "
-    full_text = full_text.replace('&', 'and').replace('<', '').replace('>', '')
-    xml = f"""<?xml version="1.0" encoding="UTF-8"?>
-<XIMSS>
-  <play text="{full_text}" lang="he"/>
-</XIMSS>"""
+            name = SYMBOL_NAMES.get(sym, sym)
+            full_text += name + ", שגיאה בטעינת נתונים. "
+    full_text = full_text.replace('&', 'ו').replace('<', '').replace('>', '')
+    xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<XIMSS>\n  <play text=\"" + full_text + "\" lang=\"he\"/>\n</XIMSS>"
     return Response(xml, mimetype='text/xml; charset=utf-8')
 
 @app.route('/ping', methods=['GET'])
