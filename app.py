@@ -8,10 +8,10 @@ app = Flask(__name__)
 SYMBOLS = ['SOXL', 'TQQQ', 'QQQ', 'NQ=F']
 
 SYMBOL_NAMES = {
-    'SOXL': 'אסואקסל',
+    'SOXL': 'סוקסל',
     'TQQQ': 'טי קיו קיו קיו',
     'QQQ': 'קיו קיו קיו',
-    'NQ=F': 'חוזים עתידיים על מדד הנאסדק',
+    'NQ=F': 'חוזים עתידיים נאסדק',
 }
 
 def get_market_session():
@@ -74,9 +74,8 @@ def stocks():
         except:
             name = SYMBOL_NAMES.get(sym, sym)
             full_text += name + ", שגיאה בטעינת נתונים. "
-    full_text = full_text.replace('&', 'ו').replace('<', '').replace('>', '')
-    xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<XIMSS>\n  <play text=\"" + full_text + "\" lang=\"he\"/>\n</XIMSS>"
-    return Response(xml, mimetype='text/xml; charset=utf-8')
+    response = "id_list_message=t-" + full_text
+    return Response(response, mimetype='text/plain')
 
 @app.route('/ping', methods=['GET'])
 def ping():
