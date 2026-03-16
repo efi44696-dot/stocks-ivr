@@ -8,7 +8,7 @@ app = Flask(__name__)
 SYMBOLS = ['SOXL', 'TQQQ', 'QQQ', 'NQ=F']
 
 SYMBOL_NAMES = {
-    'SOXL': 'אסוקסל',
+    'SOXL': 'אסואקסל',
     'TQQQ': 'טי קיו קיו קיו',
     'QQQ': 'קיו קיו קיו',
     'NQ=F': 'חוזים עתידיים על מדד הנאסדק',
