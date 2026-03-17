@@ -2,18 +2,14 @@ from flask import Flask, request, Response
 import yfinance as yf
 from datetime import datetime
 import pytz
-
 app = Flask(__name__)
-
 SYMBOLS = ['SOXL', 'TQQQ', 'QQQ', 'NQ=F']
-
 SYMBOL_NAMES = {
     'SOXL': 'סוקסל',
     'TQQQ': 'טי קיו קיו קיו',
     'QQQ': 'קיו קיו קיו',
     'NQ=F': 'חוזים עתידיים נאסדק',
 }
-
 def get_market_session():
     now = datetime.now(pytz.timezone('US/Eastern'))
     hour = now.hour + now.minute / 60
@@ -25,7 +21,6 @@ def get_market_session():
         return "מסחר מאוחר"
     else:
         return "מחוץ לשעות המסחר"
-
 def get_stock_data(symbol):
     ticker = yf.Ticker(symbol)
     info = ticker.fast_info
@@ -61,7 +56,6 @@ def get_stock_data(symbol):
     except:
         pass
     return text
-
 @app.route('/stocks', methods=['GET'])
 def stocks():
     symbols = request.args.get('symbols', ','.join(SYMBOLS))
@@ -74,12 +68,10 @@ def stocks():
         except:
             name = SYMBOL_NAMES.get(sym, sym)
             full_text += name + ", שגיאה בטעינת נתונים. "
-    response = "id_list_message=t-" + full_text
-    return Response(response, mimetype='text/plain')
-
+    response = "id_list_message=" + full_text
+    return Response(response, mimetype='text/plain; charset=utf-8')
 @app.route('/ping', methods=['GET'])
 def ping():
     return "OK", 200
-
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
