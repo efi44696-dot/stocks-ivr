@@ -27,6 +27,12 @@ SYMBOL_NAMES = {
     'NQ=F': 'חוזים עתידיים נאסדק',
 }
 
+def format_decimal(value):
+    """
+    הופך את הנקודה העשרונית למילה 'נקודה' כדי שהמערכת תקריא אותה נכון
+    """
+    return str(round(value, 2)).replace('.', ' נקודה ')
+
 def get_market_session():
     now = datetime.now(pytz.timezone('America/New_York'))
     hour = now.hour + now.minute / 60
@@ -44,55 +50,55 @@ def get_stock_data(symbol):
     info = ticker.fast_info
     price = info.last_price
     prev_close = info.previous_close
+    
     if not price or not prev_close:
         name = SYMBOL_NAMES.get(symbol, symbol)
         return name + ", נתונים לא זמינים. "
+    
     change = price - prev_close
     change_pct = (change / prev_close) * 100
     direction = "עלייה" if change >= 0 else "ירידה"
     sign = "פלוס" if change >= 0 else "מינוס"
     name = SYMBOL_NAMES.get(symbol, symbol)
-    text = (name + ". מחיר: " + str(round(price, 2)) +
+    
+    # שימוש בפורמט 'נקודה' להקראה ברורה
+    price_text = format_decimal(price)
+    pct_text = format_decimal(abs(change_pct))
+    
+    text = (name + ". מחיר: " + price_text +
             ". שינוי: " + direction + " של " + sign + " " +
-            str(round(abs(change_pct), 1)) + " אחוז. ")
+            pct_text + " אחוז. ")
+            
+    # טיפול בנתוני טרום מסחר ומסחר מאוחר במידה וקיימים
     try:
         pre = info.pre_market_price
         if pre:
-            pre_change = pre - prev_close
-            pre_pct = (pre_change / prev_close) * 100
-            pre_dir = "עלייה" if pre_change >= 0 else "ירידה"
-            pre_sign = "פלוס" if pre_change >= 0 else "מינוס"
-            text += ("מסחר מוקדם: " + str(round(pre, 2)) + ", " +
-                     pre_dir + " של " + pre_sign + " " +
-                     str(round(abs(pre_pct), 1)) + " אחוז. ")
+            pre_text = format_decimal(pre)
+            text += "מסחר מוקדם: " + pre_text + ". "
     except:
         pass
-    try:
-        post = info.post_market_price
-        if post:
-            post_change = post - prev_close
-            post_pct = (post_change / prev_close) * 100
-            post_dir = "עלייה" if post_change >= 0 else "ירידה"
-            post_sign = "פלוס" if post_change >= 0 else "מינוס"
-            text += ("מסחר מאוחר: " + str(round(post, 2)) + ", " +
-                     post_dir + " של " + post_sign + " " +
-                     str(round(abs(post_pct), 1)) + " אחוז. ")
-    except:
-        pass
+        
     return text
 
 @app.route('/stocks', methods=['GET'])
 def stocks():
     symbols = request.args.get('symbols', ','.join(SYMBOLS))
     symbol_list = [s.strip().upper() for s in symbols.split(',')]
+    
+    # הוספת שעה נוכחית בישראל
+    il_tz = pytz.timezone('Asia/Jerusalem')
+    now_il = datetime.now(il_tz).strftime("%H:%M")
+    
     session = get_market_session()
-    full_text = "נתוני מניות עדכניים. " + session + ". "
+    full_text = f"נתוני מניות נכונים לשעה {now_il}. מצב שוק: {session}. "
+    
     for sym in symbol_list:
         try:
             full_text += get_stock_data(sym)
         except:
             name = SYMBOL_NAMES.get(sym, sym)
             full_text += name + ", שגיאה בטעינת נתונים. "
+            
     return Response("id_list_message=" + full_text,
                     mimetype='text/plain; charset=utf-8')
 
