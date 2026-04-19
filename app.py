@@ -89,7 +89,7 @@ def stocks():
     now_il = datetime.now(il_tz).strftime("%H:%M")
     
     session = get_market_session()
-    full_text = f"נתוני מניות נכונים לשעה {now_il}. מצב שוק: {session}. "
+    full_text = f"נתונים לשעה {now_il}. מצב שׁוּק: {session}. "
     
     for sym in symbol_list:
         try:
