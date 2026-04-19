@@ -21,7 +21,7 @@ Thread(target=keep_alive, daemon=True).start()
 
 SYMBOLS = ['SOXL', 'TQQQ', 'QQQ', 'NQ=F']
 SYMBOL_NAMES = {
-    'SOXL': 'סוקסל',
+    'SOXL': 'אס או אקס אל',
     'TQQQ': 'טי קיו קיו קיו',
     'QQQ': 'קיו קיו קיו',
     'NQ=F': 'חוזים עתידיים נאסדק',
