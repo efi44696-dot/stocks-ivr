@@ -21,17 +21,19 @@ Thread(target=keep_alive, daemon=True).start()
 
 SYMBOLS = ['SOXL', 'TQQQ', 'QQQ', 'NQ=F']
 SYMBOL_NAMES = {
-    'SOXL': 'אס או אקס אל',
-    'TQQQ': 'טי קיו קיו קיו',
-    'QQQ': 'קיו קיו קיו',
-    'NQ=F': 'חוזים עתידיים נאסדק',
+    'SOXL': 'S O X L',
+    'TQQQ': 'T Q Q Q',
+    'QQQ': 'Q Q Q',
+    'NQ=F': 'חוזים עתידיים על מדד הנאסדק',
 }
 
 def format_decimal(value):
     """
-    הופך את הנקודה העשרונית למילה 'נקודה' כדי שהמערכת תקריא אותה נכון
+    מעגל ל-2 ספרות ומחליף נקודה במילה 'נקודה'
     """
-    return str(round(value, 2)).replace('.', ' נקודה ')
+    if value is None: return "לא ידוע"
+    rounded = round(float(value), 2)
+    return str(rounded).replace('.', ' נקודה ')
 
 def get_market_session():
     now = datetime.now(pytz.timezone('America/New_York'))
@@ -47,37 +49,35 @@ def get_market_session():
 
 def get_stock_data(symbol):
     ticker = yf.Ticker(symbol)
-    info = ticker.fast_info
-    price = info.last_price
-    prev_close = info.previous_close
     
+    # שימוש ב-history כדי להוציא מחיר אחרון בצורה אמינה יותר עבור SOXL
+    hist = ticker.history(period="1d")
+    if hist.empty:
+        # ניסיון אחרון דרך info רגיל
+        info = ticker.info
+        price = info.get('regularMarketPrice') or info.get('currentPrice')
+        prev_close = info.get('regularMarketPreviousClose')
+    else:
+        price = hist['Close'].iloc[-1]
+        prev_close = ticker.fast_info['previous_close']
+
     if not price or not prev_close:
         name = SYMBOL_NAMES.get(symbol, symbol)
-        return name + ", נתונים לא זמינים. "
+        return name + ", נתונים לא זמינים זמנית. "
     
-    change = price - prev_close
-    change_pct = (change / prev_close) * 100
-    direction = "עלייה" if change >= 0 else "ירידה"
-    sign = "פלוס" if change >= 0 else "מינוס"
+    change_pct = ((price - prev_close) / prev_close) * 100
+    direction = "עלייה" if change_pct >= 0 else "ירידה"
+    sign = "פלוס" if change_pct >= 0 else "מינוס"
     name = SYMBOL_NAMES.get(symbol, symbol)
     
-    # שימוש בפורמט 'נקודה' להקראה ברורה
     price_text = format_decimal(price)
     pct_text = format_decimal(abs(change_pct))
     
-    text = (name + ". מחיר: " + price_text +
-            ". שינוי: " + direction + " של " + sign + " " +
-            pct_text + " אחוז. ")
+    # תיקון סדר המילים: קודם המספר ואז הפלוס/מינוס (או להפך, לפי העדפת המערכת)
+    # כאן סידרתי את זה כך: "עלייה של 5 נקודה 2 פלוס אחוז"
+    text = (f"{name}. מחיר: {price_text}. "
+            f"שינוי: {direction} של {pct_text} {sign} אחוז. ")
             
-    # טיפול בנתוני טרום מסחר ומסחר מאוחר במידה וקיימים
-    try:
-        pre = info.pre_market_price
-        if pre:
-            pre_text = format_decimal(pre)
-            text += "מסחר מוקדם: " + pre_text + ". "
-    except:
-        pass
-        
     return text
 
 @app.route('/stocks', methods=['GET'])
@@ -85,7 +85,6 @@ def stocks():
     symbols = request.args.get('symbols', ','.join(SYMBOLS))
     symbol_list = [s.strip().upper() for s in symbols.split(',')]
     
-    # הוספת שעה נוכחית בישראל
     il_tz = pytz.timezone('Asia/Jerusalem')
     now_il = datetime.now(il_tz).strftime("%H:%M")
     
@@ -95,7 +94,7 @@ def stocks():
     for sym in symbol_list:
         try:
             full_text += get_stock_data(sym)
-        except:
+        except Exception as e:
             name = SYMBOL_NAMES.get(sym, sym)
             full_text += name + ", שגיאה בטעינת נתונים. "
             
